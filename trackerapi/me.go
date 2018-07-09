@@ -1,9 +1,11 @@
 package trackerapi
 
 import (
+	"bufio"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"os"
 	u "os/user"
@@ -28,7 +30,13 @@ func Me() {
 func makeRequest() []byte {
 	client := &http.Client{}
 	req, err := http.NewRequest("GET", URL, nil)
-	req.SetBasicAuth(currentUser.Username, currentUser.Password)
+	if len(currentUser.APIToken) > 0 {
+		fmt.Println("Using token")
+		req.Header.Set("X-TrackerToken", currentUser.APIToken)
+	} else {
+		fmt.Println("\nUsing user/pass pair")
+		req.SetBasicAuth(currentUser.Username, currentUser.Password)
+	}
 	resp, err := client.Do(req)
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
@@ -49,14 +57,29 @@ func parse(body []byte) {
 }
 
 func setCredentials() {
-	fmt.Fprint(Stdout, "Username: ")
-	var username = cmdutil.ReadLine()
-	cmdutil.Silence()
-	fmt.Fprint(Stdout, "Password: ")
-
-	var password = cmdutil.ReadLine()
-	currentUser.Login(username, password)
-	cmdutil.Unsilence()
+	var username, password, token string
+	if _, err := os.Stat(FileLocation); err == nil {
+		file, err := os.Open(FileLocation)
+		if err != nil {
+			log.Println(err)
+		}
+		defer file.Close()
+		scanner := bufio.NewScanner(file)
+		scanner.Scan()
+		text := scanner.Text()
+		if len(text) > 0 {
+			token = text
+		}
+	}
+	if len(token) < 1 {
+		fmt.Fprint(Stdout, "Username: ")
+		username = cmdutil.ReadLine()
+		cmdutil.Silence()
+		fmt.Fprint(Stdout, "Password: ")
+		password = cmdutil.ReadLine()
+		cmdutil.Unsilence()
+	}
+	currentUser.Login(username, password, token)
 }
 
 func homeDir() string {
