@@ -18,7 +18,8 @@ type User struct {
 	} `json:"time_zone"`
 }
 
-func (u *User) Login(name, pass string) {
+func (u *User) Login(name, pass, token string) {
 	u.Username = name
 	u.Password = pass
+	u.APIToken = token
 }
