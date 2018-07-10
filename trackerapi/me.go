@@ -22,13 +22,13 @@ var (
 
 func Me() {
 	dat, err := ioutil.ReadFile(FileLocation)
-	fmt.Println("Token: ", string(dat))
 	if err != nil || len(dat) == 0 {
 		setCredentials()
 		parse(makeRequest())
 		ioutil.WriteFile(FileLocation, []byte(currentUser.APIToken), 0644)
 		return
 	}
+	log.Println("Token: ", string(dat))
 	parse(makeRequestWithToken(string(dat[:])))
 }
 
@@ -44,7 +44,7 @@ func makeRequestWithToken(token string) []byte {
 	if err != nil {
 		log.Fatal("No file with Token ", err)
 	}
-	fmt.Printf("\n****\nAPI response: \n%s\n", string(body))
+	log.Printf("\n****\nAPI response: \n%s\n", string(body))
 	return body
 }
 
@@ -57,7 +57,7 @@ func makeRequest() []byte {
 	if err != nil {
 		fmt.Print(err)
 	}
-	fmt.Printf("\n****\nAPI response: \n%s\n", string(body))
+	log.Printf("\n****\nAPI response: \n%s\n", string(body))
 	return body
 }
 
