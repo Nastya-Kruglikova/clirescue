@@ -36,7 +36,11 @@ func readUserToken() bool {
 func makeRequest() []byte {
 	client := &http.Client{}
 	req, err := http.NewRequest("GET", URL, nil)
+	if len(currentUser.APIToken) != 0 {
+		req.Header.Add("X-TrackerToken", currentUser.APIToken)
+	} else if len(currentUser.Username) != 0 && len(currentUser.Password) != 0 {
 	req.SetBasicAuth(currentUser.Username, currentUser.Password)
+	}
 	resp, err := client.Do(req)
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
