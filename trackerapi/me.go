@@ -14,14 +14,14 @@ import (
 
 var (
 	URL          string     = "https://www.pivotaltracker.com/services/v5/me"
-	FileLocation string     = homeDir() + "/.tracker"
+	FileLocation string     = "./.tracker"
 	currentUser  *user.User = user.New()
 	Stdout       *os.File   = os.Stdout
 )
 
 func Me() {
 	if !readUserToken() {
-	setCredentials()
+		setCredentials()
 	}
 	parse(makeRequest())
 	ioutil.WriteFile(FileLocation, []byte(currentUser.APIToken), 0644)
@@ -39,7 +39,7 @@ func makeRequest() []byte {
 	if len(currentUser.APIToken) != 0 {
 		req.Header.Add("X-TrackerToken", currentUser.APIToken)
 	} else if len(currentUser.Username) != 0 && len(currentUser.Password) != 0 {
-	req.SetBasicAuth(currentUser.Username, currentUser.Password)
+		req.SetBasicAuth(currentUser.Username, currentUser.Password)
 	}
 	resp, err := client.Do(req)
 	body, err := ioutil.ReadAll(resp.Body)
