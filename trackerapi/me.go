@@ -20,9 +20,17 @@ var (
 )
 
 func Me() {
+	if !readUserToken() {
 	setCredentials()
+	}
 	parse(makeRequest())
 	ioutil.WriteFile(FileLocation, []byte(currentUser.APIToken), 0644)
+
+func readUserToken() bool {
+	fileContent, err := ioutil.ReadFile(FileLocation)
+	currentUser.APIToken = string(fileContent[:])
+	fmt.Println("token read?:", err == nil)
+	return err == nil && len(currentUser.APIToken) > 0
 }
 
 func makeRequest() []byte {
