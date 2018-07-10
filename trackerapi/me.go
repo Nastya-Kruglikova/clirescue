@@ -22,11 +22,8 @@ var (
 
 func Me() {
 	dat, err := ioutil.ReadFile(FileLocation)
-	if err != nil {
-		log.Fatal("No file with Token ", err)
-	}
 	fmt.Println("Token: ", string(dat))
-	if len(dat) == 0 {
+	if err != nil || len(dat) == 0 {
 		setCredentials()
 		parse(makeRequest())
 		ioutil.WriteFile(FileLocation, []byte(currentUser.APIToken), 0644)
