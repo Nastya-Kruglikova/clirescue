@@ -2,6 +2,7 @@ package trackerapi
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -12,67 +13,103 @@ import (
 	"github.com/GoBootcamp/clirescue/user"
 )
 
-var (
-	URL          string     = "https://www.pivotaltracker.com/services/v5/me"
-	FileLocation string     = homeDir() + "/.tracker"
-	currentUser  *user.User = user.New()
-	Stdout       *os.File   = os.Stdout
+const (
+	url      = "https://www.pivotaltracker.com/services/v5/me"
+	fileName = "tracker"
 )
 
-func Me() {
-	setCredentials()
-	parse(makeRequest())
-	ioutil.WriteFile(FileLocation, []byte(currentUser.APIToken), 0644)
+var (
+	//currentUser  *user.User
+	stdout *os.File
+)
+
+func init() {
+	stdout = os.Stdout
 }
 
-func makeRequest() []byte {
+// Me reads the username an password and makes a request to get the API token. If the request is successful stores
+// the obtained API token to a file
+func Me() {
+
+	home, err := homeDir()
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	fileLocation := home + "/" + fileName
+
+	currentUser, err := cmdutil.Credentials()
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	resp, err := makeRequest(currentUser)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	if err = parse(currentUser, resp); err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	if err = ioutil.WriteFile(fileLocation, []byte(currentUser.APIToken), 0644); err != nil {
+		fmt.Println(err)
+		return
+	}
+	fmt.Printf("file %s was created in %s, API token: %s", fileName, fileLocation, currentUser.APIToken)
+}
+
+func makeRequest(currentUser *user.User) ([]byte, error) {
 	client := &http.Client{}
-	req, err := http.NewRequest("GET", URL, nil)
+
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return nil, err
+	}
 	req.SetBasicAuth(currentUser.Username, currentUser.Password)
+
 	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	if resp.StatusCode != http.StatusOK {
+		return nil, errors.New("could not get API token, response status " + resp.Status)
+	}
+	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		fmt.Print(err)
+		return nil, err
 	}
 	fmt.Printf("\n****\nAPI response: \n%s\n", string(body))
-	return body
+	return body, nil
 }
 
-func parse(body []byte) {
-	var meResp = new(MeResponse)
-	err := json.Unmarshal(body, &meResp)
+func parse(currentUser *user.User, body []byte) error {
+	resp := make(map[string]interface{})
+
+	err := json.Unmarshal(body, &resp)
 	if err != nil {
-		fmt.Println("error:", err)
+		return err
 	}
 
-	currentUser.APIToken = meResp.APIToken
+	token, ok := resp["api_token"]
+	if ok {
+		apiToken, ok := token.(string)
+		if ok && apiToken != "" {
+			currentUser.APIToken = apiToken
+			return nil
+		}
+	}
+	return errors.New("could not parse API token")
 }
 
-func setCredentials() {
-	fmt.Fprint(Stdout, "Username: ")
-	var username = cmdutil.ReadLine()
-	cmdutil.Silence()
-	fmt.Fprint(Stdout, "Password: ")
-
-	var password = cmdutil.ReadLine()
-	currentUser.Login(username, password)
-	cmdutil.Unsilence()
-}
-
-func homeDir() string {
-	usr, _ := u.Current()
-	return usr.HomeDir
-}
-
-type MeResponse struct {
-	APIToken string `json:"api_token"`
-	Username string `json:"username"`
-	Name     string `json:"name"`
-	Email    string `json:"email"`
-	Initials string `json:"initials"`
-	Timezone struct {
-		Kind      string `json:"kind"`
-		Offset    string `json:"offset"`
-		OlsonName string `json:"olson_name"`
-	} `json:"time_zone"`
+func homeDir() (string, error) {
+	usr, err := u.Current()
+	if err != nil {
+		return "", err
+	}
+	return usr.HomeDir, nil
 }
