@@ -5,9 +5,9 @@ func New() *User {
 }
 
 type User struct {
-	Username string
+	Username string `json:"username"`
 	Password string
-	APIToken string
+	APIToken string `json:"api_token"`
 	Name     string `json:"name"`
 	Email    string `json:"email"`
 	Initials string `json:"initials"`

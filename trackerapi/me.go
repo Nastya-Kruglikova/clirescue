@@ -4,42 +4,72 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"os"
-	u "os/user"
+	osUser "os/user"
 
-	"github.com/GoBootcamp/clirescue/cmdutil"
-	"github.com/GoBootcamp/clirescue/user"
+	"github.com/volodimyr/clirescue/cmdutil"
+	"github.com/volodimyr/clirescue/file"
+	"github.com/volodimyr/clirescue/user"
+)
+
+const (
+	headerTok = "X-TrackerToken"
+	URL       = "https://www.pivotaltracker.com/services/v5/me"
 )
 
 var (
-	URL          string     = "https://www.pivotaltracker.com/services/v5/me"
 	FileLocation string     = homeDir() + "/.tracker"
 	currentUser  *user.User = user.New()
 	Stdout       *os.File   = os.Stdout
+	token        string
 )
 
-func Me() {
-	setCredentials()
-	parse(makeRequest())
-	ioutil.WriteFile(FileLocation, []byte(currentUser.APIToken), 0644)
+func init() {
+	data, err := file.Read(FileLocation)
+	if err == nil && len(data) != 0 {
+		log.Println("Token has already been submited")
+		token = string(data)
+	}
 }
 
-func makeRequest() []byte {
+func Me() {
+	req := newRequest("GET")
+	if len(token) == 0 || token == "" {
+		setCredentials()
+		req.SetBasicAuth(currentUser.Username, currentUser.Password)
+		parse(makeRequest(req))
+		ioutil.WriteFile(FileLocation, []byte(currentUser.APIToken), 0644)
+		return
+	}
+
+	req.Header.Set(headerTok, token)
+	parse(makeRequest(req))
+}
+
+func makeRequest(req *http.Request) []byte {
 	client := &http.Client{}
-	req, err := http.NewRequest("GET", URL, nil)
-	req.SetBasicAuth(currentUser.Username, currentUser.Password)
 	resp, err := client.Do(req)
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		fmt.Print(err)
 	}
+	defer resp.Body.Close()
 	fmt.Printf("\n****\nAPI response: \n%s\n", string(body))
 	return body
 }
 
+func newRequest(method string) *http.Request {
+	req, err := http.NewRequest(method, URL, nil)
+	if err != nil {
+		panic(err)
+	}
+	return req
+}
+
 func parse(body []byte) {
-	var meResp = new(MeResponse)
+	var meResp = new(user.User)
 	err := json.Unmarshal(body, &meResp)
 	if err != nil {
 		fmt.Println("error:", err)
@@ -60,19 +90,9 @@ func setCredentials() {
 }
 
 func homeDir() string {
-	usr, _ := u.Current()
+	usr, err := osUser.Current()
+	if err != nil {
+		panic(err)
+	}
 	return usr.HomeDir
-}
-
-type MeResponse struct {
-	APIToken string `json:"api_token"`
-	Username string `json:"username"`
-	Name     string `json:"name"`
-	Email    string `json:"email"`
-	Initials string `json:"initials"`
-	Timezone struct {
-		Kind      string `json:"kind"`
-		Offset    string `json:"offset"`
-		OlsonName string `json:"olson_name"`
-	} `json:"time_zone"`
 }
