@@ -8,27 +8,39 @@ import (
 	"os"
 	u "os/user"
 
-	"github.com/GoBootcamp/clirescue/cmdutil"
-	"github.com/GoBootcamp/clirescue/user"
+	"../cmdutil"
+	"../user"
 )
 
 var (
 	URL          string     = "https://www.pivotaltracker.com/services/v5/me"
-	FileLocation string     = homeDir() + "/.tracker"
+	FileLocation string     = "./.tracker"
 	currentUser  *user.User = user.New()
 	Stdout       *os.File   = os.Stdout
 )
 
 func Me() {
-	setCredentials()
+	if !readUserToken() {
+		setCredentials()
+	}
 	parse(makeRequest())
 	ioutil.WriteFile(FileLocation, []byte(currentUser.APIToken), 0644)
+
+func readUserToken() bool {
+	fileContent, err := ioutil.ReadFile(FileLocation)
+	currentUser.APIToken = string(fileContent[:])
+	fmt.Println("token read?:", err == nil)
+	return err == nil && len(currentUser.APIToken) > 0
 }
 
 func makeRequest() []byte {
 	client := &http.Client{}
 	req, err := http.NewRequest("GET", URL, nil)
-	req.SetBasicAuth(currentUser.Username, currentUser.Password)
+	if len(currentUser.APIToken) != 0 {
+		req.Header.Add("X-TrackerToken", currentUser.APIToken)
+	} else if len(currentUser.Username) != 0 && len(currentUser.Password) != 0 {
+		req.SetBasicAuth(currentUser.Username, currentUser.Password)
+	}
 	resp, err := client.Do(req)
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
