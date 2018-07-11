@@ -48,6 +48,26 @@ func me() {
 	}
 }
 
+func readCredentials() (username, password string, e error) {
+	fmt.Fprint(os.Stdout, "Username: ")
+	u, err := readLine()
+	if err != nil {
+		return "", "", err
+	}
+
+	silence()
+	fmt.Fprint(os.Stdout, "Password: ")
+
+	p, err := readLine()
+	if err != nil {
+		return "", "", err
+	}
+	unsilence()
+	fmt.Fprintln(os.Stdout, "")
+
+	return u, p, nil
+}
+
 func makeRequest(url, username, password string) ([]byte, error) {
 	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
@@ -67,26 +87,6 @@ func makeRequest(url, username, password string) ([]byte, error) {
 	}
 
 	return body, nil
-}
-
-func readCredentials() (username, password string, e error) {
-	fmt.Fprint(os.Stdout, "Username: ")
-	u, err := readLine()
-	if err != nil {
-		return "", "", err
-	}
-
-	silence()
-	fmt.Fprint(os.Stdout, "Password: ")
-
-	p, err := readLine()
-	if err != nil {
-		return "", "", err
-	}
-	unsilence()
-	fmt.Fprintln(os.Stdout, "")
-
-	return u, p, nil
 }
 
 func parse(body []byte) (*meResponse, error) {

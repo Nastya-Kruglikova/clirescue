@@ -15,7 +15,7 @@ func main() {
 	app.Commands = []cli.Command{
 		{
 			Name:  "me",
-			Usage: "authenticates and saves token for future uses",
+			Usage: "authenticates user and saves token for future uses",
 			Action: func(c *cli.Context) {
 				me()
 			},
