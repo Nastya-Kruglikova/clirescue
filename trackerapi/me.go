@@ -3,6 +3,8 @@ package trackerapi
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
+	"errors"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -21,8 +23,16 @@ var (
 
 func Me() {
 	setCredentials()
-	parse(makeRequest())
-	ioutil.WriteFile(FileLocation, []byte(currentUser.APIToken), 0644)
+	err := parse(makeRequest())
+	if err != nil {
+		err := os.Remove(FileLocation)
+		if err != nil {
+			fmt.Println("err: ", err)
+		}
+	} else {
+		data, _ := json.Marshal(currentUser)
+		ioutil.WriteFile(FileLocation, data, 0644)
+	}
 }
 
 func makeRequest() []byte {
@@ -38,17 +48,23 @@ func makeRequest() []byte {
 	return body
 }
 
-func parse(body []byte) {
+func parse(body []byte) error {
 	var meResp = new(MeResponse)
 	err := json.Unmarshal(body, &meResp)
 	if err != nil {
 		fmt.Println("error:", err)
 	}
 
+	if strings.Contains(string(body), "invalid_authentication") {
+		//we stored username and password, have to delete them
+		return errors.New("not valid credentials")
+	}
+
 	currentUser.APIToken = meResp.APIToken
+	return nil
 }
 
-func setCredentials() {
+func promptUser() {
 	fmt.Fprint(Stdout, "Username: ")
 	var username = cmdutil.ReadLine()
 	cmdutil.Silence()
@@ -57,6 +73,26 @@ func setCredentials() {
 	var password = cmdutil.ReadLine()
 	currentUser.Login(username, password)
 	cmdutil.Unsilence()
+	return
+}
+
+func setCredentials() {
+	//try to get them from storage -> if not present, prompt
+	configFile, err := os.Open(FileLocation)
+    if err != nil {
+		promptUser()
+		return
+    }
+    jsonParser := json.NewDecoder(configFile)
+    if err = jsonParser.Decode(currentUser); err != nil {
+		promptUser()
+		return
+	}
+
+	if currentUser.Password != "" && currentUser.Username != "" {
+		return
+	}
+	promptUser()
 }
 
 func homeDir() string {
