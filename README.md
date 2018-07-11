@@ -18,7 +18,7 @@ go get github.com/codegangsta/cli
 
 Load the project into your editor and do a search and replace:
 
-* Replace: `github.com/GoBootcamp`
+* Replace: `github.com/rhymefororange`
 * With: `github.com/<github-username>`
 
 Commit the change:
@@ -27,17 +27,11 @@ Commit the change:
 git commit -a -m "forking repo requires internal code changes"
 ```
 
-If everything is properly setup, you should be able to run your code:
+If everything is properly set up, you should be able to run your code:
 
 ``` bash
 go run main.go me
 ```
-
-You can use the following demo Pivotal Tracker account:
-
-* Username: gobootcamp
-* Password: santamonica
-
 
 ## Start rescuing
 
@@ -48,20 +42,20 @@ The end goal is to create a CLI to interface with the [Pivotal Tracker
 API](https://www.pivotaltracker.com/help/api/rest/v5).
 
 The current code is asking the user for a username and password, the user details are fetched.
-Your first step might be to store the user token on the drive so next time the program is called, it can automatically load the user details be without asking for the user's username and password.
+Your first step might be to store the user token on the drive, so next time the program is called, it can automatically load the user details  without asking for the user's username and password.
 
 ### A few hints:
 
 * Understanding Go path's system might be a bit tricky at first.
 * Forking the repo might affect your import statements.
 * The original author might not have made a good use of packages.
-* You more thna likely have some OOP experience, you might want to
+* You more then likely have some OOP experience, you might want to
   leverage it in this exercise.
 * Checkout the `init` function.
 * Curious about how a 3rd party lib works? Try go doc.
 * Simpler is better.
 * Look into how to write tests.
-* Bonus point for removing 3rd part dependencies.
+* Bonus point for removing 3rd party dependencies.
 
 As always, refer to the [Effective Go doc](http://golang.org/doc/effective_go.html) and [the go bootcamp book](http://www.golangbootcamp.com/book) if you have any questions.
 
