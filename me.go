@@ -66,8 +66,6 @@ func makeRequest(url, username, password string) ([]byte, error) {
 		return nil, err
 	}
 
-	fmt.Fprintln(os.Stdout, string(body))
-
 	return body, nil
 }
 
@@ -98,7 +96,10 @@ func parse(body []byte) (*meResponse, error) {
 		return nil, err
 	}
 
-	fmt.Fprintln(os.Stdout, r)
+	if r.APIToken == "" {
+		return nil, fmt.Errorf("error parsing response: %v", string(body))
+	}
+
 	return r, nil
 }
 
