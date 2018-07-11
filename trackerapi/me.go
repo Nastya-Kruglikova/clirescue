@@ -4,12 +4,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"os"
 	u "os/user"
 
-	"github.com/GoBootcamp/clirescue/cmdutil"
-	"github.com/GoBootcamp/clirescue/user"
+	"github.com/vasylboliuk/clirescue/cmdutil"
+	"github.com/vasylboliuk/clirescue/user"
 )
 
 var (
@@ -20,9 +21,31 @@ var (
 )
 
 func Me() {
-	setCredentials()
-	parse(makeRequest())
-	ioutil.WriteFile(FileLocation, []byte(currentUser.APIToken), 0644)
+	dat, err := ioutil.ReadFile(FileLocation)
+	if err != nil || len(dat) == 0 {
+		setCredentials()
+		parse(makeRequest())
+		ioutil.WriteFile(FileLocation, []byte(currentUser.APIToken), 0644)
+		return
+	}
+	log.Println("Token: ", string(dat))
+	parse(makeRequestWithToken(string(dat[:])))
+}
+
+func makeRequestWithToken(token string) []byte {
+	client := &http.Client{}
+	req, err := http.NewRequest("GET", URL, nil)
+	req.Header.Set("X-TrackerToken", token)
+	resp, err := client.Do(req)
+	if err != nil {
+		log.Fatal(err)
+	}
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		log.Fatal("No file with Token ", err)
+	}
+	log.Printf("\n****\nAPI response: \n%s\n", string(body))
+	return body
 }
 
 func makeRequest() []byte {
@@ -34,7 +57,7 @@ func makeRequest() []byte {
 	if err != nil {
 		fmt.Print(err)
 	}
-	fmt.Printf("\n****\nAPI response: \n%s\n", string(body))
+	log.Printf("\n****\nAPI response: \n%s\n", string(body))
 	return body
 }
 
@@ -42,7 +65,7 @@ func parse(body []byte) {
 	var meResp = new(MeResponse)
 	err := json.Unmarshal(body, &meResp)
 	if err != nil {
-		fmt.Println("error:", err)
+		log.Fatal(err)
 	}
 
 	currentUser.APIToken = meResp.APIToken
