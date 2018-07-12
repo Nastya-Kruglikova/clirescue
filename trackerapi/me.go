@@ -2,13 +2,13 @@ package trackerapi
 
 import (
 	"encoding/json"
-	"fmt"
-	"strings"
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"os"
 	u "os/user"
+	"strings"
 
 	"github.com/iyuroch/clirescue/cmdutil"
 	"github.com/iyuroch/clirescue/user"
@@ -49,6 +49,8 @@ func makeRequest() []byte {
 }
 
 func parse(body []byte) error {
+	//we parse the body of response ->
+	//if not valid authentication delete stored credentials
 	var meResp = new(MeResponse)
 	err := json.Unmarshal(body, &meResp)
 	if err != nil {
@@ -68,31 +70,39 @@ func promptUser() {
 	fmt.Fprint(Stdout, "Username: ")
 	var username = cmdutil.ReadLine()
 	cmdutil.Silence()
-	fmt.Fprint(Stdout, "Password: ")
 
+	fmt.Fprint(Stdout, "Password: ")
 	var password = cmdutil.ReadLine()
 	currentUser.Login(username, password)
 	cmdutil.Unsilence()
+
 	return
+}
+
+func loadUser() error {
+	//we have to load them from our storage file,
+	//if we encounter any error on the way - return error
+	configFile, err := os.Open(FileLocation)
+	if err != nil {
+		return err
+	}
+	jsonParser := json.NewDecoder(configFile)
+	if err = jsonParser.Decode(currentUser); err != nil {
+		return err
+	}
+
+	if currentUser.Password == "" && currentUser.Username == "" {
+		return errors.New("no username and password present")
+	}
+	return nil
 }
 
 func setCredentials() {
 	//try to get them from storage -> if not present, prompt
-	configFile, err := os.Open(FileLocation)
-    if err != nil {
+	err := loadUser()
+	if err != nil {
 		promptUser()
-		return
-    }
-    jsonParser := json.NewDecoder(configFile)
-    if err = jsonParser.Decode(currentUser); err != nil {
-		promptUser()
-		return
 	}
-
-	if currentUser.Password != "" && currentUser.Username != "" {
-		return
-	}
-	promptUser()
 }
 
 func homeDir() string {
