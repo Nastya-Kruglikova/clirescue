@@ -2,14 +2,16 @@ package trackerapi
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
 	"os"
 	u "os/user"
+	"strings"
 
-	"github.com/GoBootcamp/clirescue/cmdutil"
-	"github.com/GoBootcamp/clirescue/user"
+	"github.com/iyuroch/clirescue/cmdutil"
+	"github.com/iyuroch/clirescue/user"
 )
 
 var (
@@ -21,8 +23,16 @@ var (
 
 func Me() {
 	setCredentials()
-	parse(makeRequest())
-	ioutil.WriteFile(FileLocation, []byte(currentUser.APIToken), 0644)
+	err := parse(makeRequest())
+	if err != nil {
+		err := os.Remove(FileLocation)
+		if err != nil {
+			fmt.Println("err: ", err)
+		}
+	} else {
+		data, _ := json.Marshal(currentUser)
+		ioutil.WriteFile(FileLocation, data, 0644)
+	}
 }
 
 func makeRequest() []byte {
@@ -38,25 +48,61 @@ func makeRequest() []byte {
 	return body
 }
 
-func parse(body []byte) {
+func parse(body []byte) error {
+	//we parse the body of response ->
+	//if not valid authentication delete stored credentials
 	var meResp = new(MeResponse)
 	err := json.Unmarshal(body, &meResp)
 	if err != nil {
 		fmt.Println("error:", err)
 	}
 
+	if strings.Contains(string(body), "invalid_authentication") {
+		//we stored username and password, have to delete them
+		return errors.New("not valid credentials")
+	}
+
 	currentUser.APIToken = meResp.APIToken
+	return nil
 }
 
-func setCredentials() {
+func promptUser() {
 	fmt.Fprint(Stdout, "Username: ")
 	var username = cmdutil.ReadLine()
 	cmdutil.Silence()
-	fmt.Fprint(Stdout, "Password: ")
 
+	fmt.Fprint(Stdout, "Password: ")
 	var password = cmdutil.ReadLine()
 	currentUser.Login(username, password)
 	cmdutil.Unsilence()
+
+	return
+}
+
+func loadUser() error {
+	//we have to load them from our storage file,
+	//if we encounter any error on the way - return error
+	configFile, err := os.Open(FileLocation)
+	if err != nil {
+		return err
+	}
+	jsonParser := json.NewDecoder(configFile)
+	if err = jsonParser.Decode(currentUser); err != nil {
+		return err
+	}
+
+	if currentUser.Password == "" && currentUser.Username == "" {
+		return errors.New("no username and password present")
+	}
+	return nil
+}
+
+func setCredentials() {
+	//try to get them from storage -> if not present, prompt
+	err := loadUser()
+	if err != nil {
+		promptUser()
+	}
 }
 
 func homeDir() string {
